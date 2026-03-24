@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aura">
+<link rel="manifest" href="manifest.json">
+<title>Aura — Your AI Diary</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0eff8;
+    --muted: rgba(240,239,248,0.45);
+    --muted2: rgba(240,239,248,0.25);
+    --purple: #8b6fff;
+    --purple2: #6b4fff;
+    --purple-glow: rgba(139,111,255,0.15);
+    --teal: #4fd1c5;
+    --amber: #f6ad55;
+    --coral: #fc8181;
+    --green: #68d391;
+    --work: #60a5fa;
+    --health: #68d391;
+    --relations: #f687b3;
+    --goals: #f6ad55;
+    --r: 16px;
+    --r2: 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+  
+  /* APP SHELL */
+  #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; position: relative; }
+  
+  /* SCREENS */
+  .screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding-bottom: 80px; }
+  .screen.active { display: flex; }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* NAV */
+  nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(10,10,15,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); z-index: 100; }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: none; background: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-btn.active { color: var(--purple); }
+  .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.5; }
+  .nav-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .record-btn-nav { width: 52px; height: 52px; border-radius: 50%; background: var(--purple); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 24px var(--purple-glow); transition: transform 0.15s, box-shadow 0.15s; margin-top: -20px; }
+  .record-btn-nav:active { transform: scale(0.92); }
+  .record-btn-nav.recording { background: var(--coral); animation: pulse-record 1.5s infinite; }
+  @keyframes pulse-record { 0%,100%{box-shadow:0 0 24px rgba(252,129,129,0.3)} 50%{box-shadow:0 0 40px rgba(252,129,129,0.6)} }
+
+  /* HEADER */
+  .screen-header { padding: 56px 24px 20px; }
+  .greeting { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); line-height: 1.2; }
+  .greeting em { font-style: italic; color: var(--purple); }
+  .subtext { font-size: 13px; color: var(--muted); margin-top: 6px; font-weight: 300; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 20px; }
+  .card + .card { margin-top: 12px; }
+  .card-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .section { padding: 0 20px; margin-bottom: 16px; }
+
+  /* PROMPTS */
+  .prompts-wrap { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .prompt-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; cursor: pointer; transition: border-color 0.2s, background 0.2s; display: flex; align-items: flex-start; gap: 12px; }
+  .prompt-card:hover, .prompt-card.selected { border-color: var(--purple); background: var(--purple-glow); }
+  .prompt-area-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .prompt-text { font-size: 14px; line-height: 1.5; color: var(--text); font-weight: 300; }
+  .prompt-area-label { font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* RECORD SCREEN */
+  .record-screen { background: var(--bg); display: none; position: fixed; inset: 0; z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; max-width: 430px; margin: 0 auto; }
+  .record-screen.active { display: flex; }
+  .record-orb { width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #a78bff, var(--purple2)); display: flex; align-items: center; justify-content: center; margin-bottom: 32px; cursor: pointer; transition: transform 0.2s; position: relative; }
+  .record-orb::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 1px solid var(--purple); opacity: 0; }
+  .record-orb.recording { animation: orb-pulse 1.8s ease-in-out infinite; }
+  .record-orb.recording::after { animation: ring-expand 1.8s ease-out infinite; opacity: 1; }
+  @keyframes orb-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+  @keyframes ring-expand { 0%{inset:-8px;opacity:0.6} 100%{inset:-28px;opacity:0} }
+  .record-orb svg { width: 48px; height: 48px; }
+  .record-prompt-text { font-family: 'DM Serif Display', serif; font-size: 22px; text-align: center; color: var(--text); margin-bottom: 12px; line-height: 1.3; max-width: 320px; }
+  .record-status { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  .transcript-box { width: 100%; max-width: 360px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; font-size: 14px; line-height: 1.7; color: var(--text); min-height: 100px; max-height: 180px; overflow-y: auto; margin-bottom: 24px; font-weight: 300; }
+  .transcript-box:empty::before { content: 'Your words will appear here...'; color: var(--muted2); }
+  .record-actions { display: flex; gap: 12px; width: 100%; max-width: 360px; }
+  .btn { padding: 14px 24px; border-radius: 100px; border: none; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; flex: 1; }
+  .btn-primary { background: var(--purple); color: white; }
+  .btn-primary:active { background: var(--purple2); transform: scale(0.97); }
+  .btn-ghost { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:active { opacity: 0.7; }
+  .btn-danger { background: rgba(252,129,129,0.15); color: var(--coral); border: 1px solid rgba(252,129,129,0.3); }
+
+  /* WAVEFORM */
+  .waveform { display: flex; align-items: center; gap: 3px; height: 32px; margin-bottom: 8px; }
+  .wave-bar { width: 3px; border-radius: 2px; background: var(--purple); transition: height 0.1s; }
+
+  /* INSIGHT MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: flex-end; padding: 0; max-width: 430px; margin: 0 auto; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--bg2); border-radius: 28px 28px 0 0; padding: 28px 24px max(28px, env(safe-area-inset-bottom)); width: 100%; max-height: 85vh; overflow-y: auto; border-top: 1px solid var(--border2); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 24px; }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 6px; }
+  .modal-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  /* MOOD BARS */
+  .mood-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .mood-item { background: var(--bg3); border-radius: var(--r); padding: 14px; }
+  .mood-area { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .mood-score { font-family: 'DM Serif Display', serif; font-size: 28px; margin-bottom: 6px; }
+  .mood-bar-wrap { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .mood-bar { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+
+  /* INSIGHT CARDS */
+  .insight-section { margin-bottom: 20px; }
+  .insight-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+  .insight-item { background: var(--bg3); border-radius: var(--r); padding: 14px 16px; margin-bottom: 8px; font-size: 14px; line-height: 1.6; color: var(--text); font-weight: 300; border-left: 3px solid var(--purple); }
+  .thread-item { background: var(--bg3); border-radius: var(--r); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
+  .thread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; margin-top: 5px; }
+  .thread-text { font-size: 14px; color: var(--text); font-weight: 300; line-height: 1.5; }
+
+  /* ALERTS / PROACTIVE */
+  .alert-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 18px; margin-bottom: 10px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; transition: border-color 0.2s; }
+  .alert-card:hover { border-color: var(--border2); }
+  .alert-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .alert-body { flex: 1; }
+  .alert-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .alert-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .alert-time { font-size: 11px; color: var(--muted2); margin-top: 6px; }
+  .alert-urgent { border-color: rgba(252,129,129,0.3); }
+  .alert-info { border-color: rgba(96,165,250,0.25); }
+  .alert-positive { border-color: rgba(104,211,145,0.25); }
+
+  /* TREND CHART */
+  .trend-chart { width: 100%; height: 120px; position: relative; margin: 4px 0 8px; }
+  .trend-chart canvas { width: 100% !important; height: 100% !important; }
+
+  /* ENTRIES LIST */
+  .entry-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 18px 20px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; }
+  .entry-card:hover { border-color: var(--border2); }
+  .entry-date { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .entry-summary { font-size: 14px; line-height: 1.6; color: var(--text); font-weight: 300; margin-bottom: 12px; }
+  .entry-moods { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mood-pill { font-size: 11px; padding: 3px 10px; border-radius: 100px; font-weight: 500; }
+
+  /* MONTHLY / WEEKLY REPORT */
+  .report-section { padding: 20px; }
+  .report-header { font-family: 'DM Serif Display', serif; font-size: 26px; margin-bottom: 4px; }
+  .report-period { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 12px; text-align: center; }
+  .stat-val { font-family: 'DM Serif Display', serif; font-size: 28px; }
+  .stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-top: 2px; }
+  .area-trend-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .area-trend-row:last-child { border-bottom: none; }
+  .area-name { font-size: 13px; width: 90px; flex-shrink: 0; }
+  .area-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .area-bar { height: 100%; border-radius: 3px; }
+  .area-val { font-size: 13px; font-weight: 500; width: 28px; text-align: right; }
+  .trend-arrow { font-size: 12px; }
+
+  /* EMPTY STATE */
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 40px; text-align: center; flex: 1; }
+  .empty-title { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 8px; }
+  .empty-text { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+  /* NOTIFICATION BANNER */
+  .notif-banner { margin: 0 20px 12px; background: var(--purple-glow); border: 1px solid rgba(139,111,255,0.3); border-radius: var(--r); padding: 12px 16px; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+  /* LOADING */
+  .loading-dots { display: flex; gap: 6px; align-items: center; justify-content: center; padding: 24px; }
+  .loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: dot-bounce 1.2s infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot-bounce { 0%,100%{opacity:0.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+
+  /* SETTINGS */
+  .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 14px; }
+  .settings-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toggle { width: 44px; height: 24px; background: var(--bg3); border-radius: 12px; border: none; cursor: pointer; position: relative; transition: background 0.2s; }
+  .toggle.on { background: var(--purple); }
+  .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: left 0.2s; }
+  .toggle.on::after { left: 23px; }
+  input[type="text"], textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 16px; color: var(--text); font-family: inherit; font-size: 14px; width: 100%; outline: none; }
+  input[type="text"]:focus, textarea:focus { border-color: var(--purple); }
+
+  /* ANIMATIONS */
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .slide-up { animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1); }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+  /* API KEY INPUT */
+  .api-setup { padding: 40px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .api-setup h2 { font-family: 'DM Serif Display', serif; font-size: 28px; }
+  .api-setup p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .api-setup a { color: var(--purple); }
+
+  /* STREAK */
+  .streak-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+  .streak-num { font-family: 'DM Serif Display', serif; font-size: 40px; color: var(--amber); }
+  .streak-label { font-size: 13px; color: var(--muted); }
+  .streak-label strong { display: block; font-size: 16px; color: var(--text); font-family: 'DM Serif Display', serif; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- API KEY SETUP (shown on first launch) -->
+  <div id="setup-screen" class="screen active">
+    <div class="api-setup">
+      <div style="font-size:40px;margin-bottom:8px;">◎</div>
+      <h2>Welcome to <em style="font-style:italic;color:var(--purple)">Aura</em></h2>
+      <p>Your voice-first AI diary that turns daily reflections into real insights about your life.</p>
+      <p>To get started, paste your <strong>Anthropic API key</strong> below. Get one free at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> — personal use costs roughly $1–3/month.</p>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Your key stays on this device only. Never sent anywhere except Anthropic.</div>
+        <input type="text" id="api-key-input" placeholder="sk-ant-..." style="margin-bottom:12px;">
+        <input type="text" id="user-name-input" placeholder="Your first name" style="margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="saveSetup()" style="width:100%">Get started →</button>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;">
+        <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+          <strong style="color:var(--text);display:block;margin-bottom:4px;">To use on your phone:</strong>
+          Open this file in your browser → tap Share → "Add to Home Screen" for a full app experience with offline support.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME SCREEN -->
+  <div id="home-screen" class="screen">
+    <div class="screen-header">
+      <div class="greeting">Good <em id="time-greeting">morning</em>, <span id="user-name-display">friend</span>.</div>
+      <div class="subtext" id="home-subtext">What's on your mind today?</div>
+    </div>
+
+    <!-- Streak -->
+    <div class="section">
+      <div class="card" style="padding:0;">
+        <div class="streak-row">
+          <div class="streak-num" id="streak-count">0</div>
+          <div>
+            <div class="streak-label"><strong>day streak</strong>Keep going — consistency is what makes insights powerful.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="section" id="alerts-home"></div>
+
+    <!-- Today's Prompts -->
+    <div style="padding:0 20px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-label" style="margin:0;">Today's prompts</div>
+      <button onclick="generatePrompts()" style="background:none;border:none;color:var(--purple);font-size:12px;font-family:inherit;cursor:pointer;">Refresh ↻</button>
+    </div>
+    <div class="prompts-wrap" id="prompts-container">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <!-- Recent Entries -->
+    <div class="section">
+      <div class="card-label">Recent entries</div>
+      <div id="recent-entries-home"></div>
+    </div>
+  </div>
+
+  <!-- RECORD SCREEN (fullscreen overlay) -->
+  <div id="record-screen" class="record-screen">
+    <button onclick="closeRecord()" style="position:absolute;top:56px;left:24px;background:none;border:none;color:var(--muted);font-family:inherit;font-size:14px;cursor:pointer;">← Back</button>
+    <div id="record-prompt-display" class="record-prompt-text">Tap to start recording</div>
+    <div class="record-orb" id="record-orb" onclick="toggleRecording()">
+      <svg viewBox="0 0 48 48" fill="none" stroke="white" stroke-width="2">
+        <rect x="18" y="12" width="12" height="20" rx="6" fill="white" stroke="none"/>
+        <path d="M10 26c0 7.73 6.27 14 14 14s14-6.27 14-14"/>
+        <line x1="24" y1="40" x2="24" y2="46"/>
+      </svg>
+    </div>
+    <div class="waveform" id="waveform"></div>
+    <div class="record-status" id="record-status">Tap the orb to begin</div>
+    <div class="transcript-box" id="transcript-box"></div>
+    <div class="record-actions">
+      <button class="btn btn-ghost" onclick="closeRecord()">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>Save entry</button>
+    </div>
+  </div>
+
+  <!-- INSIGHTS SCREEN -->
+  <div id="insights-screen" class="screen">
+    <div class="screen-header">
+      <div class="greeting">Your <em>insights</em></div>
+      <div class="subtext">Patterns, trends, and what Aura has noticed.</div>
+    </div>
+
+    <!-- Weekly Summary -->
+    <div class="section">
+      <div class="card-label">This week</div>
+      <div class="card" id="weekly-card">
+        <div id="weekly-content"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>
+
+    <!-- Monthly Summary -->
+    <div class="section">
+      <div class="card-label">This month</div>
+      <div class="card" id="monthly-card">
+        <div id="monthly-content"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+      </div>
+    </div>
+
+    <!-- Area Trends -->
+    <div class="section">
+      <div class="card-label">Life area trends</div>
+      <div class="card">
+        <div id="area-trends"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOURNAL SCREEN -->
+  <div id="journal-screen" class="screen">
+    <div class="screen-header">
+      <div class="greeting">Your <em>journal</em></div>
+      <div class="subtext" id="entry-count-label">All entries</div>
+    </div>
+    <div class="section">
+      <input type="text" id="search-input" placeholder="Search your entries..." oninput="filterEntries(this.value)" style="margin-bottom:16px;">
+      <div id="entries-list"></div>
+    </div>
+  </div>
+
+  <!-- ALERTS SCREEN -->
+  <div id="alerts-screen" class="screen">
+    <div class="screen-header">
+      <div class="greeting">Proactive <em>alerts</em></div>
+      <div class="subtext">What Aura is watching for you.</div>
+    </div>
+    <div class="section" id="all-alerts-list"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav>
+    <button class="nav-btn active" onclick="showScreen('home')" id="nav-home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="nav-btn" onclick="showScreen('insights')" id="nav-insights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Insights
+    </button>
+    <div class="nav-center">
+      <button class="record-btn-nav" id="nav-record-btn" onclick="openRecord()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <rect x="9" y="3" width="6" height="12" rx="3" fill="white" stroke="none"/>
+          <path d="M5 11c0 3.87 3.13 7 7 7s7-3.13 7-7"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+        </svg>
+      </button>
+    </div>
+    <button class="nav-btn" onclick="showScreen('journal')" id="nav-journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Journal
+    </button>
+    <button class="nav-btn" onclick="showScreen('alerts')" id="nav-alerts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Alerts
+    </button>
+    <button class="nav-btn" onclick="showScreen('settings')" id="nav-settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Settings
+    </button>
+  </nav>
+
+
+  <!-- SETTINGS SCREEN -->
+  <div id="settings-screen" class="screen">
+    <div class="screen-header">
+      <div class="greeting">Your <em>settings</em></div>
+      <div class="subtext">API key, preferences, and data.</div>
+    </div>
+    <div class="section">
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Anthropic API key</div>
+        <input type="password" id="settings-api-key" placeholder="sk-ant-..." style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple)">console.anthropic.com</a>. Costs ~$1-3/month for personal use. Stored only on this device.</div>
+        <button class="btn btn-primary" onclick="saveApiKey()" style="width:100%">Save key</button>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Your name</div>
+        <input type="text" id="settings-name" placeholder="First name" style="margin-bottom:10px">
+        <button class="btn btn-ghost" onclick="saveName()" style="width:100%">Update name</button>
+      </div>
+      <div class="card" style="margin-bottom:12px;border-color:rgba(139,111,255,0.3)">
+        <div class="card-label" style="color:var(--purple)">Fix API errors — run over HTTP</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.8">
+          If prompts fail, your browser is blocking direct API calls from a local file.<br><br>
+          <strong style="color:var(--text)">Easiest fix:</strong> Upload index.html to <a href="https://tiiny.host" target="_blank" style="color:var(--purple)">tiiny.host</a> (free, 1 min). You get a real URL — add it to your home screen as a PWA.<br><br>
+          <strong style="color:var(--text)">Local fix:</strong> In the same folder, run <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">python3 -m http.server 8080</code> then open <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px">localhost:8080</code> in Chrome.
+        </div>
+      </div>
+      <div class="card" style="border-color:rgba(252,129,129,0.2)">
+        <div class="card-label" style="color:var(--coral)">Data</div>
+        <div class="settings-row">
+          <div><div class="settings-label">Total entries</div><div class="settings-sub" id="settings-entry-count">0 entries saved</div></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-label">Clear all data</div><div class="settings-sub">Permanently delete entries, memory, alerts</div></div>
+          <button class="btn btn-danger" onclick="clearAllData()" style="flex:none;padding:8px 14px;font-size:12px">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHT MODAL (shown after entry saved) -->
+  <div class="modal-overlay" id="insight-modal">
+    <div class="modal slide-up" id="insight-modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Entry captured ✦</div>
+      <div class="modal-subtitle" id="modal-date"></div>
+      <div id="modal-body">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+      <button class="btn btn-primary" onclick="closeModal()" style="width:100%;margin-top:16px;">Done</button>
+    </div>
+  </div>
+
+  <!-- ENTRY DETAIL MODAL -->
+  <div class="modal-overlay" id="entry-modal">
+    <div class="modal slide-up">
+      <div class="modal-handle"></div>
+      <div id="entry-modal-content"></div>
+      <button class="btn btn-ghost" onclick="document.getElementById('entry-modal').classList.remove('active')" style="width:100%;margin-top:16px;">Close</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA LAYER
+// ═══════════════════════════════════════
+const DB = {
+  get: k => { try { return JSON.parse(localStorage.getItem('aura_'+k)); } catch { return null; } },
+  set: (k,v) => localStorage.setItem('aura_'+k, JSON.stringify(v)),
+  push: (k,item) => { const arr = DB.get(k)||[]; arr.push(item); DB.set(k,arr); return arr; }
+};
+
+const AREAS = {
+  work:      { label:'Work & career',        color:'var(--work)',      hex:'#60a5fa' },
+  health:    { label:'Health & energy',      color:'var(--health)',    hex:'#68d391' },
+  relations: { label:'Relationships',        color:'var(--relations)', hex:'#f687b3' },
+  goals:     { label:'Goals & growth',       color:'var(--goals)',     hex:'#f6ad55' }
+};
+
+let state = {
+  apiKey: DB.get('apiKey') || '',
+  userName: DB.get('userName') || '',
+  entries: DB.get('entries') || [],
+  alerts: DB.get('alerts') || [],
+  memory: DB.get('memory') || { people:[], goals:[], themes:[], threads:[] },
+  currentTranscript: '',
+  selectedPrompt: null,
+  isRecording: false,
+  recognition: null,
+  mediaRecorder: null,
+  waveInterval: null,
+};
+
+// ═══════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════
+function saveSetup() {
+  const key = document.getElementById('api-key-input').value.trim();
+  const name = document.getElementById('user-name-input').value.trim();
+  if (!key.startsWith('sk-ant-')) { alert('Please enter a valid Anthropic API key (starts with sk-ant-)'); return; }
+  if (!name) { alert('Please enter your first name'); return; }
+  state.apiKey = key;
+  state.userName = name;
+  DB.set('apiKey', key);
+  DB.set('userName', name);
+  document.getElementById('setup-screen').classList.remove('active');
+  initApp();
+}
+
+function initApp() {
+  if (!state.apiKey) {
+    document.getElementById('setup-screen').classList.add('active');
+    return;
+  }
+  updateGreeting();
+  updateStreak();
+  generatePrompts();
+  renderRecentEntries();
+  renderAlerts();
+  renderInsights();
+  renderJournal();
+  document.getElementById('user-name-display').textContent = state.userName;
+  requestNotificationPermission();
+  scheduleDailyReminder();
+  showScreen('home');
+}
+
+function updateGreeting() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  document.getElementById('time-greeting').textContent = g;
+  const today = new Date().toDateString();
+  const todayEntries = state.entries.filter(e => new Date(e.date).toDateString() === today);
+  document.getElementById('home-subtext').textContent = todayEntries.length
+    ? `You've reflected ${todayEntries.length} time${todayEntries.length>1?'s':''} today. Keep building the picture.`
+    : 'What\'s on your mind today?';
+}
+
+function updateStreak() {
+  let streak = 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const found = state.entries.some(e => new Date(e.date).toDateString() === d.toDateString());
+    if (found) streak++;
+    else if (i > 0) break;
+  }
+  document.getElementById('streak-count').textContent = streak;
+}
+
+// ═══════════════════════════════════════
+// CLAUDE API
+// ═══════════════════════════════════════
+async function callClaude(prompt, systemPrompt, maxTokens=1000) {
+  // Try direct first, fall back to proxy
+  const body = JSON.stringify({
+    model: 'claude-sonnet-4-5',
+    max_tokens: maxTokens,
+    system: systemPrompt || 'You are Aura, a deeply insightful AI diary companion. Be specific, warm, and incisive — never generic.',
+    messages: [{ role:'user', content: prompt }]
+  });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': state.apiKey,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers, body });
+  } catch(corsErr) {
+    // CORS blocked (file:// or some browsers) — use allorigins proxy
+    const encoded = encodeURIComponent(JSON.stringify({ url:'https://api.anthropic.com/v1/messages', method:'POST', headers, body }));
+    throw new Error('CORS_BLOCKED');
+  }
+
+  if (res.status === 401) throw new Error('INVALID_KEY');
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+async function callClaudeJSON(prompt, systemPrompt, maxTokens=1000) {
+  const text = await callClaude(prompt, systemPrompt + '\n\nAlways respond with valid JSON only. No markdown, no explanation.', maxTokens);
+  const clean = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  return JSON.parse(clean);
+}
+
+// ═══════════════════════════════════════
+// PROMPTS GENERATION
+// ═══════════════════════════════════════
+async function generatePrompts() {
+  const container = document.getElementById('prompts-container');
+  container.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  const recentSummaries = state.entries.slice(-5).map(e => e.summary).join(' | ');
+  const threads = state.memory.threads.slice(-3).join(', ') || 'none yet';
+  const systemPrompt = `You are Aura, a warm and perceptive AI diary companion. Generate thoughtful, specific daily reflection prompts for someone based on their recent diary history. Prompts should feel like a smart friend asking the right question — never generic.`;
+
+  const prompt = `Generate exactly 3 diary prompts for today. Each should target one of these life areas: work, health, relations, goals.
+
+Recent context: ${recentSummaries || 'First time user — ask opening questions'}
+Unresolved threads: ${threads}
+Day of week: ${new Date().toLocaleDateString('en-US',{weekday:'long'})}
+
+Return JSON: { "prompts": [ { "text": "...", "area": "work|health|relations|goals" }, ... ] }
+Make prompts specific, thoughtful, and varied. Not generic. Ask about real things people grapple with.`;
+
+  try {
+    const data = await callClaudeJSON(prompt, systemPrompt);
+    container.innerHTML = '';
+    state.selectedPrompt = null;
+    data.prompts.forEach((p,i) => {
+      const area = AREAS[p.area] || AREAS.goals;
+      const card = document.createElement('div');
+      card.className = 'prompt-card fade-in';
+      card.style.animationDelay = `${i*0.08}s`;
+      card.innerHTML = `
+        <div class="prompt-area-dot" style="background:${area.color}"></div>
+        <div>
+          <div class="prompt-text">${p.text}</div>
+          <div class="prompt-area-label" style="color:${area.color}">${area.label}</div>
+        </div>`;
+      card.onclick = () => selectPrompt(card, p);
+      container.appendChild(card);
+    });
+  } catch(e) {
+    let msg = "Something went wrong.";
+    if (e.message === "INVALID_KEY") msg = "API key invalid — update it in Settings.";
+    else if (e.message === "CORS_BLOCKED" || (e.message && e.message.includes("fetch"))) msg = "Browser blocked the API call. Open this file via a server (not direct file://). See instructions below.";
+    container.innerHTML = `<div class="card"><div class="card-label" style="color:var(--coral)">Couldn't load prompts</div><div style="font-size:13px;color:var(--muted);line-height:1.7">${msg}</div><button class="btn btn-ghost" onclick="generatePrompts()" style="margin-top:12px;width:100%">Try again u21bb</button><button class="btn btn-ghost" onclick="showScreen('settings')" style="margin-top:8px;width:100%">u2699 Settings</button></div>`;
+  }
+}
+
+function selectPrompt(el, prompt) {
+  document.querySelectorAll('.prompt-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.selectedPrompt = prompt;
+  openRecord(prompt.text);
+}
+
+// ═══════════════════════════════════════
+// RECORDING
+// ═══════════════════════════════════════
+function openRecord(promptText) {
+  const screen = document.getElementById('record-screen');
+  screen.classList.add('active');
+  document.getElementById('record-prompt-display').textContent = promptText || state.selectedPrompt?.text || 'What\'s on your mind?';
+  document.getElementById('transcript-box').textContent = '';
+  document.getElementById('save-btn').disabled = true;
+  state.currentTranscript = '';
+  initWaveform();
+}
+
+function closeRecord() {
+  stopRecording();
+  document.getElementById('record-screen').classList.remove('active');
+}
+
+function initWaveform() {
+  const wf = document.getElementById('waveform');
+  wf.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    bar.style.height = '4px';
+    wf.appendChild(bar);
+  }
+}
+
+function animateWaveform() {
+  const bars = document.querySelectorAll('.wave-bar');
+  state.waveInterval = setInterval(() => {
+    bars.forEach(b => {
+      b.style.height = (Math.random()*28+4)+'px';
+      b.style.opacity = Math.random()*0.5+0.5;
+    });
+  }, 100);
+}
+
+function stopWaveform() {
+  clearInterval(state.waveInterval);
+  document.querySelectorAll('.wave-bar').forEach(b => { b.style.height='4px'; b.style.opacity='1'; });
+}
+
+function toggleRecording() {
+  if (state.isRecording) stopRecording();
+  else startRecording();
+}
+
+function startRecording() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Voice recording requires Chrome or Safari. On iPhone, use Safari.');
+    return;
+  }
+  state.recognition = new SpeechRecognition();
+  state.recognition.continuous = true;
+  state.recognition.interimResults = true;
+  state.recognition.lang = 'en-US';
+
+  let finalTranscript = '';
+  state.recognition.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    const box = document.getElementById('transcript-box');
+    box.textContent = finalTranscript + interim;
+    state.currentTranscript = finalTranscript + interim;
+    box.scrollTop = box.scrollHeight;
+    document.getElementById('save-btn').disabled = finalTranscript.trim().length < 10;
+  };
+
+  state.recognition.onerror = e => {
+    if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone access in your browser settings.');
+    stopRecording();
+  };
+
+  state.recognition.start();
+  state.isRecording = true;
+  document.getElementById('record-orb').classList.add('recording');
+  document.getElementById('record-status').textContent = 'Listening... speak naturally';
+  document.getElementById('nav-record-btn').classList.add('recording');
+  animateWaveform();
+}
+
+function stopRecording() {
+  if (state.recognition) { try { state.recognition.stop(); } catch(e){} state.recognition = null; }
+  state.isRecording = false;
+  document.getElementById('record-orb')?.classList.remove('recording');
+  document.getElementById('nav-record-btn')?.classList.remove('recording');
+  document.getElementById('record-status').textContent = state.currentTranscript ? 'Tap save to process your entry' : 'Tap the orb to begin';
+  stopWaveform();
+}
+
+// ═══════════════════════════════════════
+// SAVE & ANALYZE ENTRY
+// ═══════════════════════════════════════
+async function saveEntry() {
+  if (!state.currentTranscript.trim()) return;
+  stopRecording();
+
+  const entry = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    transcript: state.currentTranscript,
+    prompt: state.selectedPrompt?.text || '',
+    promptArea: state.selectedPrompt?.area || 'general',
+    summary: '',
+    moods: {},
+    topics: [],
+    people: [],
+    threads: [],
+    tone: '',
+    insight: ''
+  };
+
+  closeRecord();
+  showInsightModal(entry, true);
+  state.entries.push(entry);
+  DB.set('entries', state.entries);
+
+  // Analyze with Claude
+  try {
+    const memoryContext = JSON.stringify(state.memory).substring(0,800);
+    const systemPrompt = `You are Aura's insight engine. Analyze diary entries deeply and extract structured, specific insights. Be precise and personal — never vague.`;
+
+    const analysisPrompt = `Analyze this diary entry and return a JSON object.
+
+Entry: "${entry.transcript}"
+Prompt asked: "${entry.prompt}"
+User memory context: ${memoryContext}
+
+Return this exact JSON structure:
+{
+  "summary": "2-3 sentence summary of what was shared, written in second person (you said...)",
+  "moods": {
+    "work": 7,
+    "health": 6,
+    "relations": 8,
+    "goals": 5
+  },
+  "tone": "one word: anxious|energized|frustrated|hopeful|reflective|content|overwhelmed|motivated|sad|grateful",
+  "topics": ["topic1", "topic2", "topic3"],
+  "people": ["name1", "name2"],
+  "threads": ["unresolved thing 1", "unresolved thing 2"],
+  "insight": "1-2 sentences of the most important thing noticed — specific, not generic. Something the person might not have seen themselves.",
+  "alert": null
+}
+
+For 'alert': if something genuinely warrants proactive attention (mood drop, repeated concern, unresolved stress), return: { "title": "...", "desc": "...", "type": "urgent|info|positive" }
+Otherwise return null.
+Only score areas that were actually discussed. Use null for areas not mentioned.`;
+
+    const analysis = await callClaudeJSON(analysisPrompt, systemPrompt, 800);
+
+    // Update entry
+    entry.summary = analysis.summary;
+    entry.moods = analysis.moods;
+    entry.tone = analysis.tone;
+    entry.topics = analysis.topics || [];
+    entry.people = analysis.people || [];
+    entry.threads = analysis.threads || [];
+    entry.insight = analysis.insight;
+
+    // Update memory
+    if (analysis.people?.length) {
+      state.memory.people = [...new Set([...state.memory.people, ...analysis.people])].slice(-30);
+    }
+    if (analysis.topics?.length) {
+      state.memory.themes = [...new Set([...state.memory.themes, ...analysis.topics])].slice(-50);
+    }
+    if (analysis.threads?.length) {
+      state.memory.threads = [...state.memory.threads, ...analysis.threads].slice(-20);
+    }
+    DB.set('memory', state.memory);
+
+    // Save alert if triggered
+    if (analysis.alert) {
+      const alert = { ...analysis.alert, id: Date.now(), date: new Date().toISOString(), seen: false };
+      state.alerts.unshift(alert);
+      DB.set('alerts', state.alerts);
+    }
+
+    // Save updated entry
+    const idx = state.entries.findIndex(e => e.id === entry.id);
+    if (idx >= 0) state.entries[idx] = entry;
+    DB.set('entries', state.entries);
+
+    // Update modal with real data
+    renderInsightModalContent(entry);
+
+    // Refresh UI
+    updateStreak();
+    renderRecentEntries();
+    renderAlerts();
+    renderInsights();
+    renderJournal();
+    updateGreeting();
+
+    // Check if weekly/monthly reports should be generated
+    checkPeriodicReports();
+
+  } catch(e) {
+    document.getElementById('modal-body').innerHTML = `
+      <div class="insight-item">Entry saved. Analysis unavailable — check your API key.</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px;">Your transcript has been saved and can be re-analyzed.</div>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// INSIGHT MODAL
+// ═══════════════════════════════════════
+function showInsightModal(entry, loading=false) {
+  document.getElementById('modal-date').textContent = new Date(entry.date).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('modal-body').innerHTML = loading
+    ? '<div class="loading-dots"><span></span><span></span><span></span></div><div style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px;">Aura is reading your entry...</div>'
+    : '';
+  document.getElementById('insight-modal').classList.add('active');
+}
+
+function renderInsightModalContent(entry) {
+  const moods = entry.moods || {};
+  const moodHTML = Object.entries(moods).filter(([k,v])=>v!=null).map(([k,v]) => `
+    <div class="mood-item">
+      <div class="mood-area">${AREAS[k]?.label||k}</div>
+      <div class="mood-score" style="color:${AREAS[k]?.color||'white'}">${v}/10</div>
+      <div class="mood-bar-wrap"><div class="mood-bar" style="width:${v*10}%;background:${AREAS[k]?.color||'var(--purple)'}"></div></div>
+    </div>`).join('');
+
+  document.getElementById('modal-body').innerHTML = `
+    ${entry.summary ? `<div class="insight-item" style="margin-bottom:16px;border-left-color:var(--teal)"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal);margin-bottom:6px;">Summary</div>${entry.summary}</div>` : ''}
+    ${moodHTML ? `<div class="mood-grid fade-in">${moodHTML}</div>` : ''}
+    ${entry.insight ? `
+      <div class="insight-section">
+        <div class="insight-section-title">What Aura noticed</div>
+        <div class="insight-item">${entry.insight}</div>
+      </div>` : ''}
+    ${entry.threads?.length ? `
+      <div class="insight-section">
+        <div class="insight-section-title">Threads to watch</div>
+        ${entry.threads.map(t=>`<div class="thread-item"><div class="thread-dot"></div><div class="thread-text">${t}</div></div>`).join('')}
+      </div>` : ''}
+    ${entry.people?.length ? `<div style="font-size:13px;color:var(--muted);margin-top:8px;">People mentioned: <span style="color:var(--text)">${entry.people.join(', ')}</span></div>` : ''}
+  `;
+}
+
+function closeModal() {
+  document.getElementById('insight-modal').classList.remove('active');
+}
+
+// ═══════════════════════════════════════
+// ALERTS / PROACTIVE
+// ═══════════════════════════════════════
+function renderAlerts() {
+  const alerts = state.alerts.slice(0,3);
+  const container = document.getElementById('alerts-home');
+  const allContainer = document.getElementById('all-alerts-list');
+
+  if (!alerts.length) {
+    container.innerHTML = '';
+    allContainer.innerHTML = '<div class="empty"><div class="empty-title">No alerts yet</div><div class="empty-text">As you build your diary history, Aura will start flagging patterns, trends, and things worth your attention.</div></div>';
+    return;
+  }
+
+  const renderAlert = a => {
+    const colors = { urgent:'var(--coral)', info:'var(--work)', positive:'var(--green)' };
+    const icons = { urgent:'⚠', info:'◎', positive:'✦' };
+    const typeClass = { urgent:'alert-urgent', info:'alert-info', positive:'alert-positive' };
+    return `<div class="alert-card ${typeClass[a.type]||'alert-info'}">
+      <div class="alert-icon" style="background:${colors[a.type]||'var(--work)'}22;color:${colors[a.type]||'var(--work)'}">${icons[a.type]||'◎'}</div>
+      <div class="alert-body">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+        <div class="alert-time">${new Date(a.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      </div>
+    </div>`;
+  };
+
+  container.innerHTML = `<div class="card-label">Aura noticed</div>${alerts.map(renderAlert).join('')}`;
+  allContainer.innerHTML = state.alerts.length
+    ? state.alerts.map(renderAlert).join('')
+    : '<div class="empty"><div class="empty-title">All clear</div><div class="empty-text">No alerts right now.</div></div>';
+}
+
+// ═══════════════════════════════════════
+// INSIGHTS SCREEN
+// ═══════════════════════════════════════
+async function renderInsights() {
+  renderAreaTrends();
+  await renderWeeklySummary();
+  await renderMonthlySummary();
+}
+
+function renderAreaTrends() {
+  const container = document.getElementById('area-trends');
+  const entries = state.entries.slice(-14);
+  if (!entries.length) { container.innerHTML = '<div style="font-size:13px;color:var(--muted)">Record your first entry to see trends.</div>'; return; }
+
+  const avgs = {};
+  Object.keys(AREAS).forEach(area => {
+    const scored = entries.filter(e => e.moods?.[area] != null);
+    avgs[area] = scored.length ? Math.round(scored.reduce((s,e)=>s+e.moods[area],0)/scored.length*10)/10 : null;
+  });
+
+  container.innerHTML = Object.entries(avgs).filter(([k,v])=>v!=null).map(([area, avg]) => {
+    const a = AREAS[area];
+    const prev = state.entries.slice(-28,-14).filter(e=>e.moods?.[area]!=null);
+    const prevAvg = prev.length ? prev.reduce((s,e)=>s+e.moods[area],0)/prev.length : avg;
+    const diff = avg - prevAvg;
+    const arrow = diff > 0.3 ? '↑' : diff < -0.3 ? '↓' : '→';
+    const arrowColor = diff > 0.3 ? 'var(--green)' : diff < -0.3 ? 'var(--coral)' : 'var(--muted)';
+    return `<div class="area-trend-row">
+      <div class="area-name" style="color:${a.color}">${a.label.split(' ')[0]}</div>
+      <div class="area-bar-wrap"><div class="area-bar" style="width:${avg*10}%;background:${a.color}"></div></div>
+      <div class="area-val">${avg}</div>
+      <div class="trend-arrow" style="color:${arrowColor}">${arrow}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderWeeklySummary() {
+  const container = document.getElementById('weekly-content');
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekEntries = state.entries.filter(e => new Date(e.date) >= weekAgo);
+
+  if (weekEntries.length < 2) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted)">Record at least 2 entries this week for your weekly summary.</div>';
+    return;
+  }
+
+  const cached = DB.get('weekly-summary');
+  const cacheKey = weekEntries.map(e=>e.id).join(',');
+  if (cached?.key === cacheKey) { container.innerHTML = cached.html; return; }
+
+  container.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  try {
+    const summaries = weekEntries.map(e=>`[${new Date(e.date).toLocaleDateString('en-US',{weekday:'short'})}] ${e.summary||e.transcript.substring(0,200)}`).join('\n');
+    const systemPrompt = `You are Aura's weekly insight engine. Write incisive, specific weekly summaries that surface real patterns — not generic observations.`;
+    const prompt = `Generate a weekly summary for this person's diary entries.
+
+Entries this week:
+${summaries}
+
+Write 3 paragraphs:
+1. The overall theme/mood of the week — what was dominant?
+2. The most important pattern you noticed across the 4 life areas (work, health, relationships, goals)
+3. What deserves attention going into next week — be specific and actionable
+
+Be warm but direct. Specific not generic. Max 200 words total.`;
+
+    const text = await callClaude(prompt, systemPrompt, 400);
+    const html = `<div style="font-size:14px;line-height:1.8;color:var(--text);font-weight:300">${text.split('\n\n').map(p=>`<p style="margin-bottom:12px">${p}</p>`).join('')}</div>`;
+    container.innerHTML = html;
+    DB.set('weekly-summary', { key: cacheKey, html });
+  } catch(e) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted)">Couldn\'t generate weekly summary. Check API key.</div>';
+  }
+}
+
+async function renderMonthlySummary() {
+  const container = document.getElementById('monthly-content');
+  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
+  const monthEntries = state.entries.filter(e => new Date(e.date) >= monthAgo);
+
+  if (monthEntries.length < 5) {
+    container.innerHTML = `<div style="font-size:13px;color:var(--muted)">Record ${5-monthEntries.length} more entr${5-monthEntries.length===1?'y':'ies'} this month for your monthly review.</div>`;
+    return;
+  }
+
+  const cached = DB.get('monthly-summary');
+  const cacheKey = monthEntries.length + '_' + monthEntries[monthEntries.length-1]?.id;
+  if (cached?.key === cacheKey) { container.innerHTML = cached.html; return; }
+
+  container.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  try {
+    const summaries = monthEntries.map(e=>`[${new Date(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}] ${e.summary||e.transcript.substring(0,150)}`).join('\n');
+    const systemPrompt = `You are Aura's monthly review engine. Write a meaningful, specific monthly recap that shows real growth, real patterns, and real things to work on.`;
+    const prompt = `Generate a monthly review for this person's diary entries from the past 30 days.
+
+${monthEntries.length} entries recorded this month:
+${summaries.substring(0,2000)}
+
+Structure your response as:
+**The arc of this month:** (What was the overall journey? What shifted?)
+**Biggest patterns across life areas:** (What showed up repeatedly in work, health, relationships, or goals?)
+**What you made progress on:** (Specific things that moved forward)
+**What needs more attention:** (Specific things that kept coming up unresolved)
+**For next month:** (1-2 specific, actionable intentions)
+
+Be specific and personal. Write like someone who has been paying close attention. Max 300 words.`;
+
+    const text = await callClaude(prompt, systemPrompt, 600);
+    const html = text.split('\n').map(line => {
+      if (line.startsWith('**') && line.endsWith('**')) return `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px">${line.replace(/\*\*/g,'')}</div>`;
+      if (line.startsWith('**')) return `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px">${line.replace(/\*\*/g,'')}</div>`;
+      return line ? `<div style="font-size:14px;line-height:1.8;color:var(--text);font-weight:300;margin-bottom:6px">${line}</div>` : '';
+    }).join('');
+    container.innerHTML = html;
+    DB.set('monthly-summary', { key: cacheKey, html });
+  } catch(e) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted)">Couldn\'t generate monthly summary. Check API key.</div>';
+  }
+}
+
+// ═══════════════════════════════════════
+// JOURNAL SCREEN
+// ═══════════════════════════════════════
+function renderRecentEntries() {
+  const container = document.getElementById('recent-entries-home');
+  const entries = [...state.entries].reverse().slice(0,3);
+  if (!entries.length) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:24px 0">Your entries will appear here after your first recording.</div>';
+    return;
+  }
+  container.innerHTML = entries.map(e=>entryCardHTML(e)).join('');
+}
+
+function renderJournal() {
+  const entries = [...state.entries].reverse();
+  document.getElementById('entry-count-label').textContent = `${entries.length} entr${entries.length===1?'y':'ies'} total`;
+  renderEntryList(entries);
+}
+
+function renderEntryList(entries) {
+  const container = document.getElementById('entries-list');
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-title">No entries yet</div><div class="empty-text">Tap the record button to start your first entry.</div></div>';
+    return;
+  }
+  container.innerHTML = entries.map(e=>entryCardHTML(e)).join('');
+}
+
+function entryCardHTML(entry) {
+  const moods = entry.moods || {};
+  const moodPills = Object.entries(moods).filter(([k,v])=>v!=null).map(([k,v]) => `
+    <span class="mood-pill" style="background:${AREAS[k]?.hex||'#fff'}22;color:${AREAS[k]?.color||'white'}">${AREAS[k]?.label.split(' ')[0]||k}: ${v}</span>`).join('');
+
+  return `<div class="entry-card fade-in" onclick="showEntryDetail(${entry.id})">
+    <div class="entry-date">${new Date(entry.date).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})} ${entry.tone ? '· '+entry.tone : ''}</div>
+    <div class="entry-summary">${entry.summary || entry.transcript.substring(0,120)+'...'}</div>
+    ${moodPills ? `<div class="entry-moods">${moodPills}</div>` : ''}
+  </div>`;
+}
+
+function showEntryDetail(id) {
+  const entry = state.entries.find(e=>e.id===id);
+  if (!entry) return;
+  const modal = document.getElementById('entry-modal');
+  const moods = entry.moods || {};
+  const moodHTML = Object.entries(moods).filter(([k,v])=>v!=null).map(([k,v]) => `
+    <div class="mood-item">
+      <div class="mood-area">${AREAS[k]?.label||k}</div>
+      <div class="mood-score" style="color:${AREAS[k]?.color||'white'}">${v}/10</div>
+      <div class="mood-bar-wrap"><div class="mood-bar" style="width:${v*10}%;background:${AREAS[k]?.color||'var(--purple)'}"></div></div>
+    </div>`).join('');
+
+  document.getElementById('entry-modal-content').innerHTML = `
+    <div class="modal-title">${new Date(entry.date).toLocaleDateString('en-US',{month:'long',day:'numeric'})}</div>
+    <div class="modal-subtitle">${entry.prompt ? 'Prompt: '+entry.prompt : 'Free entry'}</div>
+    ${entry.summary ? `<div class="insight-item" style="margin-bottom:16px;border-left-color:var(--teal)">${entry.summary}</div>` : ''}
+    ${moodHTML ? `<div class="mood-grid">${moodHTML}</div>` : ''}
+    ${entry.insight ? `<div class="insight-item" style="margin:12px 0">${entry.insight}</div>` : ''}
+    ${entry.threads?.length ? `<div class="insight-section"><div class="insight-section-title">Threads</div>${entry.threads.map(t=>`<div class="thread-item"><div class="thread-dot"></div><div class="thread-text">${t}</div></div>`).join('')}</div>` : ''}
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div class="insight-section-title">Full transcript</div>
+      <div style="font-size:14px;line-height:1.8;color:var(--muted);font-weight:300">${entry.transcript}</div>
+    </div>`;
+  modal.classList.add('active');
+}
+
+function filterEntries(query) {
+  if (!query) { renderJournal(); return; }
+  const q = query.toLowerCase();
+  const filtered = [...state.entries].reverse().filter(e =>
+    e.transcript?.toLowerCase().includes(q) ||
+    e.summary?.toLowerCase().includes(q) ||
+    e.people?.some(p=>p.toLowerCase().includes(q)) ||
+    e.topics?.some(t=>t.toLowerCase().includes(q))
+  );
+  renderEntryList(filtered);
+}
+
+// ═══════════════════════════════════════
+// PERIODIC REPORTS
+// ═══════════════════════════════════════
+async function checkPeriodicReports() {
+  // Check for weekly proactive alert
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekEntries = state.entries.filter(e=>new Date(e.date)>=weekAgo);
+  if (weekEntries.length >= 3) {
+    const lastAlert = DB.get('last-weekly-alert');
+    const daysSince = lastAlert ? (Date.now()-lastAlert)/86400000 : 99;
+    if (daysSince >= 7) {
+      await generateWeeklyAlert(weekEntries);
+      DB.set('last-weekly-alert', Date.now());
+    }
+  }
+}
+
+async function generateWeeklyAlert(entries) {
+  try {
+    const systemPrompt = `You are Aura's proactive alert system. Generate one specific, meaningful alert based on patterns in the user's week.`;
+    const summaries = entries.map(e=>e.summary||e.transcript.substring(0,100)).join(' | ');
+    const data = await callClaudeJSON(`Based on this week's diary entries: "${summaries}"
+
+Generate one proactive alert (the most important thing to flag).
+Return JSON: { "title": "short alert title (max 8 words)", "desc": "1-2 specific sentences about what you noticed and why it matters", "type": "urgent|info|positive" }`, systemPrompt, 200);
+
+    const alert = { ...data, id: Date.now(), date: new Date().toISOString(), seen: false };
+    state.alerts.unshift(alert);
+    if (state.alerts.length > 20) state.alerts = state.alerts.slice(0,20);
+    DB.set('alerts', state.alerts);
+    renderAlerts();
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      banner.className = 'notif-banner fade-in';
+      banner.innerHTML = '◎ Enable daily reminders to build your streak';
+      banner.onclick = () => {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') banner.remove();
+          else banner.textContent = 'You can enable notifications in browser settings anytime.';
+        });
+      };
+      document.getElementById('home-screen').insertBefore(banner, document.getElementById('home-screen').querySelector('.section'));
+    }, 3000);
+  }
+}
+
+function scheduleDailyReminder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const prefs = DB.get('notif-prefs') || { hour: 20 };
+  const now = new Date();
+  const next = new Date();
+  next.setHours(prefs.hour, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate()+1);
+  const ms = next-now;
+  setTimeout(() => {
+    const today = new Date().toDateString();
+    const hasToday = state.entries.some(e=>new Date(e.date).toDateString()===today);
+    if (!hasToday) {
+      new Notification('Aura', { body: 'Your daily reflection is waiting. A few minutes now, real insight later.', icon: '/icon-192.png' });
+    }
+    setInterval(() => scheduleDailyReminder(), 86400000);
+  }, ms);
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(name+'-screen')?.classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  if (name==='insights') renderInsights();
+  if (name==='journal') renderJournal();
+  if (name==='alerts') renderAlerts();
+  if (name==='settings') loadSettingsScreen();
+}
+
+function loadSettingsScreen() {
+  const keyInput = document.getElementById('settings-api-key');
+  const nameInput = document.getElementById('settings-name');
+  const countEl = document.getElementById('settings-entry-count');
+  if (keyInput) keyInput.value = state.apiKey ? '••••••••' + state.apiKey.slice(-6) : '';
+  if (nameInput) nameInput.value = state.userName || '';
+  if (countEl) countEl.textContent = state.entries.length + ' entr' + (state.entries.length === 1 ? 'y' : 'ies') + ' saved';
+}
+
+function saveApiKey() {
+  const val = document.getElementById('settings-api-key').value.trim();
+  if (!val || val.startsWith('••')) { alert('Please paste your full API key (starts with sk-ant-)'); return; }
+  if (!val.startsWith('sk-ant-')) { alert('That doesn't look like an Anthropic API key. It should start with sk-ant-'); return; }
+  state.apiKey = val;
+  DB.set('apiKey', val);
+  alert('API key saved! Tap Home and try refreshing prompts.');
+  showScreen('home');
+  generatePrompts();
+}
+
+function saveName() {
+  const val = document.getElementById('settings-name').value.trim();
+  if (!val) { alert('Please enter a name'); return; }
+  state.userName = val;
+  DB.set('userName', val);
+  document.getElementById('user-name-display').textContent = val;
+  alert('Name updated!');
+}
+
+function clearAllData() {
+  if (!confirm('This will permanently delete all your diary entries, memory, and alerts. This cannot be undone.')) return;
+  ['entries','memory','alerts','weekly-summary','monthly-summary','last-weekly-alert'].forEach(k => localStorage.removeItem('aura_'+k));
+  state.entries = [];
+  state.alerts = [];
+  state.memory = { people:[], goals:[], themes:[], threads:[] };
+  alert('All data cleared.');
+  showScreen('home');
+  updateStreak();
+  renderRecentEntries();
+  generatePrompts();
+}
+
+// ═══════════════════════════════════════
+// SERVICE WORKER
+// ═══════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+window.addEventListener('load', () => {
+  if (state.apiKey && state.userName) {
+    document.getElementById('setup-screen').classList.remove('active');
+    initApp();
+  }
+});
+</script>
+</body>
+</html>
